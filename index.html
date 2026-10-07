@@ -1,0 +1,1360 @@
+<!DOCTYPE html>
+<html lang="zh-TW" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fortnite 商店與物品追蹤提醒器</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts: Montserrat & Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Montserrat:wght@700;800;900&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        display: ['Montserrat', 'sans-serif'],
+                    },
+                    colors: {
+                        vbucks: '#ffd700',
+                        fortnite: {
+                            purple: '#9d4edd',
+                            blue: '#00b4d8',
+                            dark: '#0e1117',
+                            card: '#161b22',
+                            border: '#30363d'
+                        },
+                        rarity: {
+                            common: '#9e9e9e',
+                            uncommon: '#55da28',
+                            rare: '#2bb0ed',
+                            epic: '#b150e6',
+                            legendary: '#f3af19',
+                            mythic: '#ffd700',
+                            icon: '#31b3d3',
+                            marvel: '#ed1d24',
+                            dc: '#0055ff',
+                            starwars: '#ffe81f'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background: radial-gradient(circle at top center, #1e112a 0%, #0a0c10 100%);
+            min-height: 100vh;
+            color: #f0f6fc;
+        }
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0d1117;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #30363d;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #8b5cf6;
+        }
+        /* Rarity glowing borders */
+        .rarity-border-common { border-color: #9e9e9e; }
+        .rarity-border-uncommon { border-color: #55da28; box-shadow: 0 0 10px rgba(85,218,40,0.15); }
+        .rarity-border-rare { border-color: #2bb0ed; box-shadow: 0 0 12px rgba(43,176,237,0.2); }
+        .rarity-border-epic { border-color: #b150e6; box-shadow: 0 0 15px rgba(177,80,230,0.25); }
+        .rarity-border-legendary { border-color: #f3af19; box-shadow: 0 0 18px rgba(243,175,25,0.3); }
+        .rarity-border-icon { border-color: #31b3d3; box-shadow: 0 0 15px rgba(49,179,211,0.25); }
+        .rarity-border-marvel { border-color: #ed1d24; box-shadow: 0 0 15px rgba(237,29,36,0.25); }
+        .rarity-border-dc { border-color: #0055ff; box-shadow: 0 0 15px rgba(0,85,255,0.25); }
+        .rarity-border-starwars { border-color: #ffe81f; box-shadow: 0 0 15px rgba(255,232,31,0.25); }
+
+        .vbucks-glow {
+            text-shadow: 0 0 8px rgba(255, 215, 0, 0.6);
+        }
+    </style>
+</head>
+<body class="font-sans antialiased text-gray-100 pb-12 selection:bg-purple-600 selection:text-white">
+
+    <!-- Top Header -->
+    <header class="sticky top-0 z-40 bg-slate-950/80 backdrop-blur-md border-b border-slate-800">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <!-- Brand Title -->
+                <div class="flex items-center gap-3 cursor-pointer" onclick="switchTab('shop')">
+                    <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-600 to-blue-600 flex items-center justify-center shadow-lg shadow-purple-500/30">
+                        <i class="fa-solid font-black text-xl text-yellow-300 fa-store"></i>
+                    </div>
+                    <div>
+                        <h1 class="font-display font-black text-xl tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 via-purple-300 to-cyan-400">
+                            FORTNITE <span class="text-xs px-2 py-0.5 rounded bg-purple-900/60 text-purple-300 border border-purple-500/30 font-sans tracking-normal uppercase">Tracker</span>
+                        </h1>
+                        <p class="text-[10px] text-slate-400">商店即時情報 & 物品通知提醒器</p>
+                    </div>
+                </div>
+
+                <!-- Reset Timer -->
+                <div class="hidden md:flex items-center gap-3 bg-slate-900/90 px-3.5 py-1.5 rounded-full border border-slate-800">
+                    <i class="fa-regular fa-clock text-purple-400 animate-pulse"></i>
+                    <span class="text-xs text-slate-400">商店刷新倒數：</span>
+                    <span id="resetTimer" class="font-mono text-sm font-bold text-yellow-400">00:00:00</span>
+                </div>
+
+                <!-- Navigation Tabs -->
+                <nav class="flex items-center space-x-1 sm:space-x-2">
+                    <button onclick="switchTab('shop')" id="tabBtn-shop" class="tab-btn px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold flex items-center gap-2 transition-all bg-purple-600 text-white shadow-lg shadow-purple-600/30">
+                        <i class="fa-solid fa-cart-shopping"></i>
+                        <span>今日商店</span>
+                    </button>
+                    <button onclick="switchTab('search')" id="tabBtn-search" class="tab-btn px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold flex items-center gap-2 text-slate-400 hover:text-white hover:bg-slate-800/80 transition-all">
+                        <i class="fa-solid fa-magnifying-glass"></i>
+                        <span>全物品搜尋</span>
+                    </button>
+                    <button onclick="switchTab('watchlist')" id="tabBtn-watchlist" class="tab-btn px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold flex items-center gap-2 text-slate-400 hover:text-white hover:bg-slate-800/80 transition-all relative">
+                        <i class="fa-solid fa-bell"></i>
+                        <span>追蹤清單</span>
+                        <span id="watchlistBadge" class="hidden min-w-[18px] h-4 px-1 rounded-full bg-yellow-500 text-slate-950 text-[10px] font-black items-center justify-center">0</span>
+                    </button>
+                </nav>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Container -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
+
+        <!-- Notification Banner (If items tracked are in shop today) -->
+        <div id="shopAlertBanner" class="hidden mb-6 p-4 rounded-2xl bg-gradient-to-r from-amber-500/20 via-purple-500/20 to-blue-500/20 border border-amber-500/40 backdrop-blur-md flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div class="flex items-center gap-3.5">
+                <div class="w-10 h-10 rounded-xl bg-amber-500 text-slate-950 flex items-center justify-center text-xl shrink-0 font-bold">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                </div>
+                <div>
+                    <h3 class="font-bold text-amber-300 flex items-center gap-2">
+                        🎉 今日商店出現你追蹤的物品！
+                    </h3>
+                    <p id="shopAlertText" class="text-xs text-slate-300 mt-0.5">點擊下方按鈕可快速查看今日上架項目。</p>
+                </div>
+            </div>
+            <button onclick="switchTab('watchlist')" class="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-xl text-xs shrink-0 transition-all shadow-md shadow-amber-500/20">
+                領域查看
+            </button>
+        </div>
+
+        <!-- Notification Permission Bar -->
+        <div id="notificationPermissionBar" class="hidden mb-6 p-3 px-4 rounded-xl bg-slate-900 border border-purple-500/30 flex items-center justify-between text-xs text-slate-300">
+            <div class="flex items-center gap-2">
+                <i class="fa-solid fa-regular fa-bell text-purple-400"></i>
+                <span>開啟瀏覽器桌面通知，當追蹤物品上架時將第一時間獲得通知！</span>
+            </div>
+            <button onclick="requestNotificationPermission()" class="px-3 py-1 bg-purple-600 hover:bg-purple-500 text-white rounded-lg font-semibold transition-all">
+                啟用通知
+            </button>
+        </div>
+
+        <!-- TAB 1: TODAY'S SHOP -->
+        <section id="tabContent-shop" class="tab-content space-y-6">
+            <!-- Shop Header Controls -->
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-slate-900/60 p-4 rounded-2xl border border-slate-800">
+                <div>
+                    <h2 class="text-xl font-bold flex items-center gap-2">
+                        <span>Fortnite 今日商店</span>
+                        <span id="shopDate" class="text-xs font-normal px-2.5 py-0.5 rounded-full bg-slate-800 text-slate-400">---</span>
+                    </h2>
+                    <p class="text-xs text-slate-400 mt-1">即時連線官方數據，顯示今日所有可購買物品與價格</p>
+                </div>
+
+                <div class="flex flex-wrap items-center gap-2">
+                    <!-- Search inside shop -->
+                    <div class="relative flex-1 sm:w-48">
+                        <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-xs text-slate-500"></i>
+                        <input type="text" id="shopSearchInput" oninput="filterShopItems()" placeholder="搜尋今日商店..." class="w-full bg-slate-950 border border-slate-800 rounded-xl pl-8 pr-3 py-1.5 text-xs text-white focus:outline-none focus:border-purple-500">
+                    </div>
+                    <!-- Filter Rarity -->
+                    <select id="shopRarityFilter" onchange="filterShopItems()" class="bg-slate-950 border border-slate-800 rounded-xl px-3 py-1.5 text-xs text-slate-300 focus:outline-none focus:border-purple-500">
+                        <option value="all">所有稀有度</option>
+                        <option value="legendary">傳奇 (Legendary)</option>
+                        <option value="epic">史詩 (Epic)</option>
+                        <option value="rare">稀有 (Rare)</option>
+                        <option value="uncommon">罕見 (Uncommon)</option>
+                        <option value="series">特殊系列 (Icon/Marvel等)</option>
+                    </select>
+                    <!-- Refresh Button -->
+                    <button onclick="fetchTodayShop(true)" class="p-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs transition-all flex items-center gap-1.5" title="重新整理商店數據">
+                        <i id="shopRefreshIcon" class="fa-solid fa-rotate"></i>
+                        <span class="hidden sm:inline">重新整理</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Loading State -->
+            <div id="shopLoading" class="flex flex-col items-center justify-center py-20 text-center">
+                <div class="w-12 h-12 border-4 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
+                <p class="mt-4 text-sm text-slate-400">正在抓取今日商店最新數據...</p>
+            </div>
+
+            <!-- Empty / Error State -->
+            <div id="shopEmpty" class="hidden text-center py-16 bg-slate-900/30 rounded-2xl border border-slate-800 space-y-3">
+                <i class="fa-solid fa-store-slash text-4xl text-slate-600"></i>
+                <p class="text-slate-400 text-sm">找不到符合條件的今日商店物品或網路連線暫時中斷</p>
+                <button onclick="fetchTodayShop(true)" class="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-xl text-xs font-semibold transition-all">
+                    重新試驗連線
+                </button>
+            </div>
+
+            <!-- Shop Grid -->
+            <div id="shopGrid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4"></div>
+        </section>
+
+        <!-- TAB 2: ALL COSMETICS SEARCH -->
+        <section id="tabContent-search" class="tab-content hidden space-y-6">
+            <!-- Search Header Controls -->
+            <div class="bg-slate-900/60 p-4 sm:p-6 rounded-2xl border border-slate-800 space-y-4">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <div>
+                        <h2 class="text-xl font-bold">全物品資料庫搜尋</h2>
+                        <p class="text-xs text-slate-400 mt-0.5">離線 IndexedDB 快取加速，搜尋 Fortnite 歷史登場的數萬種物品</p>
+                    </div>
+                    <!-- Cache Status Pill -->
+                    <div class="flex items-center gap-2">
+                        <span id="cacheStatusPill" class="text-[11px] px-3 py-1 rounded-full bg-slate-800 border border-slate-700 text-slate-400 flex items-center gap-1.5">
+                            <span class="w-2 h-2 rounded-full bg-yellow-500"></span>
+                            <span id="cacheStatusText">檢查快取中...</span>
+                        </span>
+                        <button onclick="forceRefreshCache()" class="text-xs px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg border border-slate-700 transition-all" title="強制重新快取">
+                            <i class="fa-solid fa-arrows-rotate mr-1"></i>重載快取
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Search Inputs Bar -->
+                <div class="grid grid-cols-1 sm:grid-cols-12 gap-3">
+                    <!-- Keyword Search -->
+                    <div class="sm:col-span-6 relative">
+                        <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-3 text-slate-500"></i>
+                        <input type="text" id="allSearchInput" oninput="debounceSearch()" placeholder="輸入物品名稱 (例如: Midas, Axe, Dance)..." class="w-full bg-slate-950 border border-slate-800 rounded-xl pl-10 pr-4 py-2 text-sm text-white focus:outline-none focus:border-purple-500">
+                    </div>
+
+                    <!-- Type Filter -->
+                    <div class="sm:col-span-3">
+                        <select id="allTypeFilter" onchange="executeSearch()" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-300 focus:outline-none focus:border-purple-500">
+                            <option value="all">所有類型 (Outfits, Emotes...)</option>
+                            <option value="outfit">角色造型 (Outfits)</option>
+                            <option value="backpack">後背包 (Back Blings)</option>
+                            <option value="pickaxe">採集工具 (Pickaxes)</option>
+                            <option value="emote">舞蹈動作 (Emotes)</option>
+                            <option value="glider">滑翔翼 (Gliders)</option>
+                            <option value="wrap">槍枝造型 (Wraps)</option>
+                            <option value="music">音樂 (Music)</option>
+                        </select>
+                    </div>
+
+                    <!-- Rarity Filter -->
+                    <div class="sm:col-span-3">
+                        <select id="allRarityFilter" onchange="executeSearch()" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-300 focus:outline-none focus:border-purple-500">
+                            <option value="all">所有稀有度</option>
+                            <option value="legendary">傳奇 (Legendary)</option>
+                            <option value="epic">史詩 (Epic)</option>
+                            <option value="rare">稀有 (Rare)</option>
+                            <option value="uncommon">罕見 (Uncommon)</option>
+                            <option value="common">普通 (Common)</option>
+                            <option value="series">特殊跨界系列</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Search Results Meta -->
+            <div class="flex items-center justify-between text-xs text-slate-400 px-1">
+                <span>找到 <strong id="searchResultCount" class="text-purple-400">0</strong> 項物品</span>
+                <span id="searchRenderInfo" class="text-slate-500">顯示前 60 筆結果</span>
+            </div>
+
+            <!-- Search Loading -->
+            <div id="searchLoading" class="hidden flex flex-col items-center justify-center py-20 text-center">
+                <div class="w-10 h-10 border-4 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
+                <p id="searchLoadingText" class="mt-4 text-xs text-slate-400">正在加載全量裝備資料庫...</p>
+            </div>
+
+            <!-- Search Grid -->
+            <div id="searchGrid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4"></div>
+
+            <!-- Load More Button -->
+            <div id="loadMoreContainer" class="hidden text-center pt-4">
+                <button onclick="loadMoreSearchResults()" class="px-6 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold rounded-xl border border-slate-700 transition-all">
+                    載入更多物品...
+                </button>
+            </div>
+        </section>
+
+        <!-- TAB 3: WATCHLIST (REMINDER & MULTI-SELECT MANAGEMENT) -->
+        <section id="tabContent-watchlist" class="tab-content hidden space-y-6">
+            <!-- Watchlist Controls Bar -->
+            <div class="bg-slate-900/60 p-4 sm:p-5 rounded-2xl border border-slate-800 space-y-4">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div>
+                        <h2 class="text-xl font-bold flex items-center gap-2">
+                            <span>我的提醒追蹤清單</span>
+                            <span id="watchlistTotalCount" class="text-xs px-2.5 py-0.5 rounded-full bg-purple-900/60 text-purple-300 border border-purple-500/30">0 項追蹤中</span>
+                        </h2>
+                        <p class="text-xs text-slate-400 mt-1">當追蹤物品於每日商店更新上架時，系統將自動觸發桌面通知與標示</p>
+                    </div>
+
+                    <!-- Batch Operations Controls -->
+                    <div class="flex flex-wrap items-center gap-2">
+                        <!-- Multi Select Mode Toggle -->
+                        <button onclick="toggleMultiSelectMode()" id="multiSelectToggleBtn" class="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs font-semibold rounded-xl transition-all flex items-center gap-1.5">
+                            <i class="fa-solid fa-list-check"></i>
+                            <span id="multiSelectToggleText">開啟複選模式</span>
+                        </button>
+
+                        <!-- Clear All Button -->
+                        <button onclick="confirmClearAllWatchlist()" class="px-3.5 py-2 bg-rose-950/60 hover:bg-rose-900/80 border border-rose-800/60 text-rose-300 text-xs font-semibold rounded-xl transition-all flex items-center gap-1.5">
+                            <i class="fa-solid fa-trash-can"></i>
+                            <span>全部清除</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Multi-select Batch Action Sub-bar (Visible when multi-select active) -->
+                <div id="batchActionBar" class="hidden p-3 bg-purple-950/40 border border-purple-500/30 rounded-xl flex items-center justify-between gap-2 flex-wrap">
+                    <div class="flex items-center gap-3">
+                        <label class="inline-flex items-center gap-2 text-xs font-semibold text-slate-300 cursor-pointer">
+                            <input type="checkbox" id="selectAllCheckbox" onchange="toggleSelectAllWatchlist(this.checked)" class="w-4 h-4 rounded border-slate-700 text-purple-600 focus:ring-purple-500 bg-slate-900">
+                            <span>全選所有</span>
+                        </label>
+                        <span class="text-xs text-purple-300">已選擇 <strong id="selectedCountText" class="text-yellow-400">0</strong> 項</span>
+                    </div>
+
+                    <button onclick="untrackSelectedItems()" id="untrackSelectedBtn" disabled class="px-3 py-1.5 bg-rose-600 hover:bg-rose-500 disabled:opacity-40 disabled:hover:bg-rose-600 text-white font-semibold text-xs rounded-lg transition-all flex items-center gap-1">
+                        <i class="fa-solid fa-bell-slash"></i>
+                        <span>取消追蹤選取項目</span>
+                    </button>
+                </div>
+
+                <!-- Filter Sub-tabs -->
+                <div class="flex items-center gap-2 border-t border-slate-800/80 pt-3 text-xs">
+                    <span class="text-slate-500 mr-2">篩選狀態:</span>
+                    <button onclick="filterWatchlistTab('all')" id="wlFilter-all" class="wl-filter-btn px-3 py-1 rounded-lg bg-purple-600 text-white font-medium">全部</button>
+                    <button onclick="filterWatchlistTab('inShop')" id="wlFilter-inShop" class="wl-filter-btn px-3 py-1 rounded-lg bg-slate-800 text-slate-400 hover:text-white">🟢 本日商店販售中</button>
+                    <button onclick="filterWatchlistTab('waiting')" id="wlFilter-waiting" class="wl-filter-btn px-3 py-1 rounded-lg bg-slate-800 text-slate-400 hover:text-white">⚪ 等待上架中</button>
+                </div>
+            </div>
+
+            <!-- Watchlist Empty State -->
+            <div id="watchlistEmpty" class="hidden text-center py-20 bg-slate-900/30 rounded-2xl border border-slate-800">
+                <i class="fa-regular fa-bell-slash text-5xl text-slate-600 mb-3"></i>
+                <p class="text-slate-300 font-semibold text-sm">提醒清單目前為空</p>
+                <p class="text-xs text-slate-500 mt-1 max-w-md mx-auto">在「今日商店」或「全物品搜尋」中點擊物品卡片上的鈴鐺圖示，即可將心儀造型加入追蹤！</p>
+                <button onclick="switchTab('search')" class="mt-4 px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-xl text-xs font-semibold transition-all">
+                    去搜尋物品
+                </button>
+            </div>
+
+            <!-- Watchlist Grid -->
+            <div id="watchlistGrid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4"></div>
+        </section>
+
+    </main>
+
+    <!-- ITEM DETAIL MODAL -->
+    <div id="itemDetailModal" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md hidden items-center justify-center p-4 overflow-y-auto">
+        <div class="relative w-full max-w-xl bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl overflow-hidden my-8">
+            <!-- Modal Close Button -->
+            <button onclick="closeModal()" class="absolute top-4 right-4 z-10 w-9 h-9 rounded-full bg-slate-950/60 text-slate-400 hover:text-white flex items-center justify-center transition-all">
+                <i class="fa-solid fa-xmark text-lg"></i>
+            </button>
+
+            <!-- Modal Content Header Banner -->
+            <div id="modalBanner" class="relative h-64 sm:h-72 bg-gradient-to-b from-slate-800 to-slate-900 flex items-center justify-center p-4">
+                <img id="modalImage" src="" alt="Item Image" class="max-h-full max-w-full object-contain drop-shadow-[0_10px_20px_rgba(0,0,0,0.5)]">
+                <!-- Rarity Badge -->
+                <div class="absolute bottom-4 left-4 flex items-center gap-2">
+                    <span id="modalRarityBadge" class="text-xs font-bold px-3 py-1 rounded-full text-slate-950 bg-yellow-400 uppercase tracking-wider">
+                        Rarity
+                    </span>
+                    <span id="modalTypeBadge" class="text-xs px-3 py-1 rounded-full bg-slate-950/70 text-slate-300 border border-slate-700">
+                        Type
+                    </span>
+                </div>
+            </div>
+
+            <!-- Modal Body Details -->
+            <div class="p-6 space-y-5">
+                <div>
+                    <div class="flex items-start justify-between gap-2">
+                        <h3 id="modalTitle" class="text-2xl font-black text-white tracking-wide">Item Name</h3>
+                        <!-- In Shop Price tag if available -->
+                        <div id="modalPriceTag" class="hidden flex items-center gap-1.5 px-3 py-1 rounded-xl bg-amber-500/20 border border-amber-500/40 text-amber-300 font-bold">
+                            <span class="vbucks-glow">V</span>
+                            <span id="modalPriceText">1,200</span>
+                        </div>
+                    </div>
+                    <p id="modalDescription" class="text-sm text-slate-400 mt-2">Item description goes here.</p>
+                </div>
+
+                <!-- Stats Grid -->
+                <div class="grid grid-cols-2 gap-3 text-xs">
+                    <div class="p-3 bg-slate-950/60 rounded-xl border border-slate-800/80">
+                        <span class="text-slate-500 block">登場賽季 / 導入章節</span>
+                        <span id="modalIntroduction" class="font-semibold text-slate-200 mt-0.5 block">未知</span>
+                    </div>
+                    <div class="p-3 bg-slate-950/60 rounded-xl border border-slate-800/80">
+                        <span class="text-slate-500 block">上次出現於商店</span>
+                        <span id="modalLastAppeared" class="font-semibold text-slate-200 mt-0.5 block">計算中...</span>
+                    </div>
+                </div>
+
+                <!-- Action Button inside Modal -->
+                <div class="pt-2">
+                    <button id="modalTrackBtn" onclick="toggleModalTrackStatus()" class="w-full py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all shadow-lg">
+                        <i class="fa-solid fa-bell"></i>
+                        <span>加入追蹤提醒</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Message Container -->
+    <div id="toastContainer" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+    <script>
+        const FORTNITE_SHOP_API_PRIMARY = 'https://fortnite-api.com/v2/shop';
+        const FORTNITE_SHOP_API_FALLBACK = 'https://fortnite-api.com/v2/shop/br';
+        const FORTNITE_COSMETICS_API = 'https://fortnite-api.com/v2/cosmetics/br';
+
+        // State Store
+        let todayShopItems = [];       // Today's shop items array
+        let shopItemIdsSet = new Set(); // Set of IDs currently in shop
+        let allCosmeticsList = [];     // Full cosmetics list (cached)
+        let searchResults = [];        // Filtered search results
+        let searchRenderOffset = 0;
+        const RENDER_BATCH_SIZE = 60;
+
+        let watchlist = [];            // Array of tracked item objects or IDs
+        let selectedWatchlistIds = new Set(); // Multi-select tracking IDs
+        let isMultiSelectMode = false;
+        let currentWatchlistFilter = 'all';
+
+        let activeModalItemId = null;
+        let searchDebounceTimer = null;
+
+        const DB_NAME = 'FortniteTrackerDB';
+        const DB_VERSION = 1;
+        const STORE_NAME = 'cosmetics_cache';
+
+        function openDB() {
+            return new Promise((resolve, reject) => {
+                const request = indexedDB.open(DB_NAME, DB_VERSION);
+                request.onupgradeneeded = (e) => {
+                    const db = e.target.result;
+                    if (!db.objectStoreNames.contains(STORE_NAME)) {
+                        db.createObjectStore(STORE_NAME, { keyPath: 'id' });
+                    }
+                };
+                request.onsuccess = (e) => resolve(e.target.result);
+                request.onerror = (e) => reject(e.target.error);
+            });
+        }
+
+        async function saveCosmeticsToDB(items) {
+            try {
+                const db = await openDB();
+                const tx = db.transaction(STORE_NAME, 'readwrite');
+                const store = tx.objectStore(STORE_NAME);
+                store.clear();
+                items.forEach(item => store.put(item));
+                localStorage.setItem('fortnite_cache_timestamp', Date.now().toString());
+            } catch (err) {
+                console.warn('IndexedDB save error:', err);
+            }
+        }
+
+        async function getCosmeticsFromDB() {
+            try {
+                const db = await openDB();
+                return new Promise((resolve) => {
+                    const tx = db.transaction(STORE_NAME, 'readonly');
+                    const store = tx.objectStore(STORE_NAME);
+                    const request = store.getAll();
+                    request.onsuccess = () => resolve(request.result || []);
+                    request.onerror = () => resolve([]);
+                });
+            } catch (err) {
+                return [];
+            }
+        }
+
+        window.onload = async function() {
+            loadWatchlistFromStorage();
+            startResetCountdown();
+            checkNotificationPermissionStatus();
+
+            // 1. Fetch Today's Shop First
+            await fetchTodayShop();
+
+            // 2. Load Cached Cosmetics or Sync
+            loadCosmeticsDatabase();
+        };
+
+        function loadWatchlistFromStorage() {
+            const saved = localStorage.getItem('fortnite_watchlist_items');
+            if (saved) {
+                try {
+                    watchlist = JSON.parse(saved);
+                } catch(e) { watchlist = []; }
+            }
+            updateWatchlistBadge();
+        }
+
+        function saveWatchlistToStorage() {
+            localStorage.setItem('fortnite_watchlist_items', JSON.stringify(watchlist));
+            updateWatchlistBadge();
+        }
+
+        function isItemTracked(id) {
+            return watchlist.some(item => item.id === id);
+        }
+
+        function toggleTrackItem(itemObj) {
+            const index = watchlist.findIndex(item => item.id === itemObj.id);
+            if (index > -1) {
+                watchlist.splice(index, 1);
+                showToast(`已移除追蹤：${itemObj.name}`, 'info');
+            } else {
+                watchlist.push({
+                    id: itemObj.id,
+                    name: itemObj.name,
+                    rarity: itemObj.rarity?.value || 'common',
+                    type: itemObj.type?.displayValue || itemObj.type?.value || 'Cosmetic',
+                    image: itemObj.images?.icon || itemObj.images?.smallIcon || itemObj.images?.featured || '',
+                    shopHistory: itemObj.shopHistory || [],
+                    addedTime: Date.now()
+                });
+                showToast(`已加入追蹤清單：${itemObj.name}`, 'success');
+            }
+            saveWatchlistToStorage();
+            refreshCurrentUI();
+        }
+
+        function updateWatchlistBadge() {
+            const badge = document.getElementById('watchlistBadge');
+            const countText = document.getElementById('watchlistTotalCount');
+            if (watchlist.length > 0) {
+                badge.textContent = watchlist.length;
+                badge.classList.remove('hidden');
+                badge.classList.add('flex');
+            } else {
+                badge.classList.add('hidden');
+            }
+            if (countText) {
+                countText.textContent = `${watchlist.length} 項追蹤中`;
+            }
+        }
+
+        async function fetchTodayShop(manualRefresh = false) {
+            const loadingEl = document.getElementById('shopLoading');
+            const gridEl = document.getElementById('shopGrid');
+            const emptyEl = document.getElementById('shopEmpty');
+            const refreshIcon = document.getElementById('shopRefreshIcon');
+
+            if (manualRefresh && refreshIcon) refreshIcon.classList.add('animate-spin');
+            loadingEl.classList.remove('hidden');
+            gridEl.innerHTML = '';
+            emptyEl.classList.add('hidden');
+
+            try {
+                let shopData = null;
+
+                // Attempt Primary API Endpoint
+                try {
+                    const res = await fetch(`${FORTNITE_SHOP_API_PRIMARY}?language=zh-Hant`);
+                    const data = await res.json();
+                    if (data && data.status === 200 && data.data) {
+                        shopData = data.data;
+                    }
+                } catch (e) {
+                    console.warn('Primary Shop API request failed, trying fallback...', e);
+                }
+
+                // Attempt Fallback API Endpoint
+                if (!shopData) {
+                    try {
+                        const res = await fetch(`${FORTNITE_SHOP_API_FALLBACK}?language=zh-Hant`);
+                        const data = await res.json();
+                        if (data && data.status === 200 && data.data) {
+                            shopData = data.data;
+                        }
+                    } catch (e) {
+                        console.warn('Fallback Shop API request failed:', e);
+                    }
+                }
+
+                if (!shopData) {
+                    throw new Error('無法取得 Fortnite 今日商店資料，請確認網路連線');
+                }
+
+                document.getElementById('shopDate').textContent = shopData.date ? shopData.date.split('T')[0] : new Date().toISOString().split('T')[0];
+
+                // Parse shop entries reliably across various API versions
+                const parsedItems = parseShopEntries(shopData);
+
+                // Deduplicate items by ID
+                const uniqueItemsMap = new Map();
+                parsedItems.forEach(item => {
+                    if (!uniqueItemsMap.has(item.id)) {
+                        uniqueItemsMap.set(item.id, item);
+                    }
+                });
+
+                todayShopItems = Array.from(uniqueItemsMap.values());
+                shopItemIdsSet.clear();
+                todayShopItems.forEach(item => shopItemIdsSet.add(item.id));
+
+                renderShopItems(todayShopItems);
+                checkTrackedItemsInShop();
+            } catch (err) {
+                console.error('Fetch shop error:', err);
+                emptyEl.classList.remove('hidden');
+                showToast('無法抓取今日商店數據，請稍後重試', 'error');
+            } finally {
+                loadingEl.classList.add('hidden');
+                if (refreshIcon) refreshIcon.classList.remove('animate-spin');
+            }
+        }
+
+        // Robust Shop Parser handling both v2/shop and v2/shop/br structures
+        function parseShopEntries(shopData) {
+            const results = [];
+
+            // Case A: New format with shopData.entries array
+            if (Array.isArray(shopData.entries)) {
+                shopData.entries.forEach(entry => {
+                    const price = entry.finalPrice || entry.regularPrice || entry.vBucks || 0;
+                    const tileSize = entry.tileSize || 'Normal';
+
+                    // Extract items from any available category array inside entry
+                    const subItems = [
+                        ...(entry.brItems || []),
+                        ...(entry.items || []),
+                        ...(entry.tracks || []),
+                        ...(entry.instruments || []),
+                        ...(entry.cars || [])
+                    ];
+
+                    // If standalone Bundle
+                    if (entry.bundle && subItems.length === 0) {
+                        results.push({
+                            id: entry.devName || entry.offerId || `bundle_${Math.random().toString(36).substr(2,6)}`,
+                            name: entry.bundle.name || entry.devName || '商店特惠組合 Bundle',
+                            description: entry.bundle.info || '優惠套裝',
+                            type: { displayValue: 'Bundle', value: 'bundle' },
+                            rarity: { value: 'epic', displayValue: 'Epic' },
+                            price: price,
+                            tileSize: tileSize,
+                            images: {
+                                icon: entry.bundle.image || entry.newDisplayAsset?.materialInstances?.[0]?.images?.OfferImage || ''
+                            },
+                            shopHistory: []
+                        });
+                    }
+
+                    subItems.forEach(item => {
+                        const imgUrl = item.images?.icon || item.images?.featured || item.images?.smallIcon || item.images?.large || item.images?.full_background || item.albumArt || '';
+                        results.push({
+                            id: item.id,
+                            name: item.name || item.title || '未知物品',
+                            description: item.description || '',
+                            type: {
+                                displayValue: item.type?.displayValue || item.type?.value || '裝備',
+                                value: item.type?.value || 'cosmetic'
+                            },
+                            rarity: {
+                                value: (item.rarity?.value || item.series?.value || 'common').toLowerCase(),
+                                displayValue: item.rarity?.displayValue || item.rarity?.value || 'Common'
+                            },
+                            series: item.series ? { value: item.series.value } : null,
+                            price: price,
+                            tileSize: tileSize,
+                            images: {
+                                icon: imgUrl,
+                                featured: item.images?.featured || imgUrl,
+                                smallIcon: item.images?.smallIcon || imgUrl
+                            },
+                            shopHistory: item.shopHistory || item.history || []
+                        });
+                    });
+                });
+            }
+            // Case B: Legacy format with categories (featured, daily, etc.)
+            else {
+                const categories = ['featured', 'daily', 'specialFeatured', 'specialDaily', 'votes'];
+                categories.forEach(cat => {
+                    if (shopData[cat] && Array.isArray(shopData[cat].entries)) {
+                        shopData[cat].entries.forEach(entry => {
+                            const price = entry.finalPrice || entry.regularPrice || 0;
+                            const items = entry.items || [];
+                            items.forEach(item => {
+                                const imgUrl = item.images?.icon || item.images?.featured || item.images?.smallIcon || '';
+                                results.push({
+                                    id: item.id,
+                                    name: item.name || '未知物品',
+                                    description: item.description || '',
+                                    type: { displayValue: item.type?.displayValue || item.type?.value || '裝備' },
+                                    rarity: { value: (item.rarity?.value || 'common').toLowerCase() },
+                                    price: price,
+                                    images: { icon: imgUrl, featured: imgUrl, smallIcon: imgUrl },
+                                    shopHistory: item.shopHistory || []
+                                });
+                            });
+                        });
+                    }
+                });
+            }
+
+            return results;
+        }
+
+        function filterShopItems() {
+            const keyword = document.getElementById('shopSearchInput').value.toLowerCase().trim();
+            const rarity = document.getElementById('shopRarityFilter').value;
+
+            const filtered = todayShopItems.filter(item => {
+                const nameMatch = item.name.toLowerCase().includes(keyword);
+                let rarityMatch = true;
+                const rVal = (item.rarity?.value || '').toLowerCase();
+                const seriesVal = (item.series?.value || '').toLowerCase();
+
+                if (rarity === 'series') {
+                    rarityMatch = seriesVal !== '';
+                } else if (rarity !== 'all') {
+                    rarityMatch = rVal === rarity;
+                }
+                return nameMatch && rarityMatch;
+            });
+
+            renderShopItems(filtered);
+        }
+
+        function renderShopItems(items) {
+            const gridEl = document.getElementById('shopGrid');
+            const emptyEl = document.getElementById('shopEmpty');
+            gridEl.innerHTML = '';
+
+            if (!items || items.length === 0) {
+                emptyEl.classList.remove('hidden');
+                return;
+            }
+            emptyEl.classList.add('hidden');
+
+            items.forEach(item => {
+                const card = createItemCard(item, { isShopItem: true });
+                gridEl.appendChild(card);
+            });
+        }
+
+        function createItemCard(item, options = {}) {
+            const card = document.createElement('div');
+            const rarityKey = (item.series?.value || item.rarity?.value || 'common').toLowerCase();
+            const rarityBorderClass = getRarityBorderClass(rarityKey);
+            const tracked = isItemTracked(item.id);
+            const inTodayShop = shopItemIdsSet.has(item.id);
+
+            card.className = `group relative bg-slate-900/90 rounded-2xl border-2 ${rarityBorderClass} overflow-hidden flex flex-col justify-between hover:scale-[1.03] transition-all duration-200 cursor-pointer shadow-lg`;
+            card.onclick = (e) => {
+                // If click was not on track button
+                if (!e.target.closest('.action-btn-prevent')) {
+                    openItemDetailModal(item.id);
+                }
+            };
+
+            const imgUrl = item.images?.icon || item.images?.smallIcon || item.images?.featured || 'https://placehold.co/200x200/1e293b/ffffff?text=Fortnite';
+
+            card.innerHTML = `
+                <!-- Top Status Badges -->
+                <div class="absolute top-2 left-2 right-2 z-10 flex items-center justify-between pointer-events-none">
+                    ${inTodayShop ? `
+                        <span class="px-2 py-0.5 rounded-full bg-amber-500 text-slate-950 font-black text-[10px] tracking-wide shadow-md flex items-center gap-1">
+                            <i class="fa-solid fa-fire"></i>今日販售
+                        </span>
+                    ` : '<div></div>'}
+
+                    <!-- Bell Track Button -->
+                    <button onclick="event.stopPropagation(); toggleTrackItemFromCard('${item.id}')" class="action-btn-prevent pointer-events-auto w-7 h-7 rounded-full bg-slate-950/70 backdrop-blur-md text-slate-300 hover:text-yellow-400 hover:scale-110 flex items-center justify-center transition-all ${tracked ? 'text-yellow-400 bg-yellow-400/20' : ''}">
+                        <i class="${tracked ? 'fa-solid' : 'fa-regular'} fa-bell text-xs"></i>
+                    </button>
+                </div>
+
+                <!-- Image Banner -->
+                <div class="relative w-full aspect-square bg-gradient-to-b from-slate-800/40 to-slate-950/80 p-3 flex items-center justify-center overflow-hidden">
+                    <img src="${imgUrl}" alt="${item.name}" loading="lazy" class="max-h-full max-w-full object-contain group-hover:scale-110 transition-transform duration-300">
+                </div>
+
+                <!-- Card Bottom Info -->
+                <div class="p-3 bg-slate-950/90 border-t border-slate-800/80 space-y-1">
+                    <h4 class="font-bold text-xs sm:text-sm text-white truncate" title="${item.name}">${item.name}</h4>
+                    
+                    <div class="flex items-center justify-between text-[11px] text-slate-400 pt-0.5">
+                        <span class="truncate max-w-[60%]">${item.type?.displayValue || item.type?.value || '裝備'}</span>
+                        ${options.isShopItem && item.price ? `
+                            <span class="font-bold text-amber-400 flex items-center gap-1">
+                                <span class="vbucks-glow text-[10px]">V</span> ${item.price}
+                            </span>
+                        ` : `
+                            <span class="text-[10px] text-slate-500 uppercase">${item.rarity?.value || ''}</span>
+                        `}
+                    </div>
+                </div>
+            `;
+
+            return card;
+        }
+
+        function toggleTrackItemFromCard(id) {
+            let itemObj = todayShopItems.find(i => i.id === id) || allCosmeticsList.find(i => i.id === id) || watchlist.find(i => i.id === id);
+            if (itemObj) {
+                toggleTrackItem(itemObj);
+            }
+        }
+
+        async function loadCosmeticsDatabase() {
+            const statusText = document.getElementById('cacheStatusText');
+            statusText.textContent = '讀取快取中...';
+
+            let cachedData = await getCosmeticsFromDB();
+
+            if (cachedData && cachedData.length > 1000) {
+                allCosmeticsList = cachedData;
+                statusText.textContent = `已快取 ${allCosmeticsList.length.toLocaleString()} 項物品`;
+            } else {
+                await fetchAndCacheAllCosmetics();
+            }
+        }
+
+        async function fetchAndCacheAllCosmetics() {
+            const statusText = document.getElementById('cacheStatusText');
+            statusText.textContent = '從 API 更新全量資料中...';
+
+            try {
+                const res = await fetch(FORTNITE_COSMETICS_API);
+                const data = await res.json();
+
+                if (data.status === 200 && data.data) {
+                    allCosmeticsList = data.data;
+                    await saveCosmeticsToDB(allCosmeticsList);
+                    statusText.textContent = `已快取 ${allCosmeticsList.length.toLocaleString()} 項物品`;
+                    showToast('已成功快取全量裝備資料庫', 'success');
+                }
+            } catch (err) {
+                console.error('Fetch all cosmetics error:', err);
+                statusText.textContent = '快取載入失敗';
+            }
+        }
+
+        async function forceRefreshCache() {
+            showToast('開始重新下載資料庫...', 'info');
+            await fetchAndCacheAllCosmetics();
+            if (document.getElementById('tabContent-search').classList.contains('hidden') === false) {
+                executeSearch();
+            }
+        }
+
+        function debounceSearch() {
+            clearTimeout(searchDebounceTimer);
+            searchDebounceTimer = setTimeout(() => {
+                executeSearch();
+            }, 300);
+        }
+
+        function executeSearch() {
+            const keyword = document.getElementById('allSearchInput').value.toLowerCase().trim();
+            const typeVal = document.getElementById('allTypeFilter').value;
+            const rarityVal = document.getElementById('allRarityFilter').value;
+
+            if (allCosmeticsList.length === 0) {
+                showToast('資料庫尚未載入完成，請稍候', 'info');
+                return;
+            }
+
+            searchResults = allCosmeticsList.filter(item => {
+                const nameMatch = item.name.toLowerCase().includes(keyword);
+
+                let typeMatch = true;
+                if (typeVal !== 'all') {
+                    const t = (item.type?.value || '').toLowerCase();
+                    typeMatch = t.includes(typeVal);
+                }
+
+                let rarityMatch = true;
+                if (rarityVal === 'series') {
+                    rarityMatch = (item.series?.value || '') !== '';
+                } else if (rarityVal !== 'all') {
+                    rarityMatch = (item.rarity?.value || '').toLowerCase() === rarityVal;
+                }
+
+                return nameMatch && typeMatch && rarityMatch;
+            });
+
+            document.getElementById('searchResultCount').textContent = searchResults.length.toLocaleString();
+            searchRenderOffset = 0;
+            renderSearchResults(true);
+        }
+
+        function renderSearchResults(reset = false) {
+            const gridEl = document.getElementById('searchGrid');
+            const loadMoreBtn = document.getElementById('loadMoreContainer');
+
+            if (reset) gridEl.innerHTML = '';
+
+            const batch = searchResults.slice(searchRenderOffset, searchRenderOffset + RENDER_BATCH_SIZE);
+            batch.forEach(item => {
+                const card = createItemCard(item);
+                gridEl.appendChild(card);
+            });
+
+            searchRenderOffset += batch.length;
+
+            if (searchRenderOffset < searchResults.length) {
+                loadMoreBtn.classList.remove('hidden');
+            } else {
+                loadMoreBtn.classList.add('hidden');
+            }
+
+            document.getElementById('searchRenderInfo').textContent = `顯示 ${Math.min(searchRenderOffset, searchResults.length)} / ${searchResults.length.toLocaleString()} 筆`;
+        }
+
+        function loadMoreSearchResults() {
+            renderSearchResults(false);
+        }
+
+        function renderWatchlist() {
+            const gridEl = document.getElementById('watchlistGrid');
+            const emptyEl = document.getElementById('watchlistEmpty');
+            gridEl.innerHTML = '';
+
+            if (watchlist.length === 0) {
+                emptyEl.classList.remove('hidden');
+                return;
+            }
+            emptyEl.classList.add('hidden');
+
+            // Filter Watchlist items based on filter tab
+            let displayList = watchlist.filter(item => {
+                const inShop = shopItemIdsSet.has(item.id);
+                if (currentWatchlistFilter === 'inShop') return inShop;
+                if (currentWatchlistFilter === 'waiting') return !inShop;
+                return true;
+            });
+
+            if (displayList.length === 0) {
+                gridEl.innerHTML = `<div class="col-span-full text-center py-12 text-slate-500 text-xs">無符合條件的追蹤項目</div>`;
+                return;
+            }
+
+            displayList.forEach(item => {
+                const card = createWatchlistItemCard(item);
+                gridEl.appendChild(card);
+            });
+
+            updateSelectedCountUI();
+        }
+
+        function createWatchlistItemCard(item) {
+            const card = document.createElement('div');
+            const rarityBorderClass = getRarityBorderClass(item.rarity);
+            const inTodayShop = shopItemIdsSet.has(item.id);
+            const isSelected = selectedWatchlistIds.has(item.id);
+
+            card.className = `group relative bg-slate-900/90 rounded-2xl border-2 ${rarityBorderClass} overflow-hidden flex flex-col justify-between hover:scale-[1.02] transition-all duration-200 cursor-pointer shadow-lg ${isSelected ? 'ring-2 ring-purple-500 bg-purple-950/20' : ''}`;
+
+            card.onclick = (e) => {
+                if (isMultiSelectMode) {
+                    toggleSelectWatchlistItem(item.id);
+                } else if (!e.target.closest('.action-btn-prevent')) {
+                    openItemDetailModal(item.id);
+                }
+            };
+
+            // Days calculation since last appeared if history available
+            let lastAppearedText = '無商店紀錄';
+            if (item.shopHistory && item.shopHistory.length > 0) {
+                const lastDate = new Date(item.shopHistory[item.shopHistory.length - 1]);
+                const diffDays = Math.floor((new Date() - lastDate) / (1000 * 60 * 60 * 24));
+                lastAppearedText = `${diffDays} 天前`;
+            }
+
+            card.innerHTML = `
+                <!-- Top Controls -->
+                <div class="absolute top-2 left-2 right-2 z-10 flex items-center justify-between">
+                    <!-- Checkbox for multi select -->
+                    <div class="${isMultiSelectMode ? 'block' : 'hidden'} action-btn-prevent">
+                        <input type="checkbox" ${isSelected ? 'checked' : ''} onchange="toggleSelectWatchlistItem('${item.id}')" class="w-5 h-5 rounded border-slate-700 text-purple-600 focus:ring-purple-500 bg-slate-900 cursor-pointer">
+                    </div>
+
+                    <!-- In Shop Status Badge -->
+                    <div class="flex items-center gap-1">
+                        ${inTodayShop ? `
+                            <span class="px-2 py-0.5 rounded-full bg-amber-500 text-slate-950 font-black text-[10px] shadow-md flex items-center gap-1">
+                                🟢 今日販售中
+                            </span>
+                        ` : `
+                            <span class="px-2 py-0.5 rounded-full bg-slate-950/80 text-slate-400 text-[10px] border border-slate-800">
+                                ⚪ 等待上架
+                            </span>
+                        `}
+                    </div>
+
+                    <!-- Untrack Single Item Button -->
+                    <button onclick="event.stopPropagation(); toggleTrackItemFromCard('${item.id}')" class="${isMultiSelectMode ? 'hidden' : 'block'} action-btn-prevent w-7 h-7 rounded-full bg-rose-950/80 border border-rose-800/60 text-rose-300 hover:bg-rose-600 hover:text-white flex items-center justify-center transition-all" title="取消追蹤">
+                        <i class="fa-solid fa-trash-can text-xs"></i>
+                    </button>
+                </div>
+
+                <!-- Image -->
+                <div class="relative w-full aspect-square bg-gradient-to-b from-slate-800/40 to-slate-950/80 p-3 flex items-center justify-center overflow-hidden">
+                    <img src="${item.image || 'https://placehold.co/200x200/1e293b/ffffff?text=Fortnite'}" alt="${item.name}" loading="lazy" class="max-h-full max-w-full object-contain group-hover:scale-105 transition-transform">
+                </div>
+
+                <!-- Footer Info -->
+                <div class="p-3 bg-slate-950/90 border-t border-slate-800/80 space-y-1">
+                    <h4 class="font-bold text-xs sm:text-sm text-white truncate">${item.name}</h4>
+                    <div class="flex items-center justify-between text-[11px] text-slate-400">
+                        <span>${item.type}</span>
+                        <span class="text-[10px] text-slate-500">${lastAppearedText}</span>
+                    </div>
+                </div>
+            `;
+
+            return card;
+        }
+
+        function toggleMultiSelectMode() {
+            isMultiSelectMode = !isMultiSelectMode;
+            const btnText = document.getElementById('multiSelectToggleText');
+            const batchBar = document.getElementById('batchActionBar');
+
+            if (isMultiSelectMode) {
+                btnText.textContent = '退出複選';
+                batchBar.classList.remove('hidden');
+            } else {
+                btnText.textContent = '開啟複選模式';
+                batchBar.classList.add('hidden');
+                selectedWatchlistIds.clear();
+            }
+            renderWatchlist();
+        }
+
+        function toggleSelectWatchlistItem(id) {
+            if (selectedWatchlistIds.has(id)) {
+                selectedWatchlistIds.delete(id);
+            } else {
+                selectedWatchlistIds.add(id);
+            }
+            updateSelectedCountUI();
+            renderWatchlist();
+        }
+
+        function toggleSelectAllWatchlist(checked) {
+            if (checked) {
+                watchlist.forEach(item => selectedWatchlistIds.add(item.id));
+            } else {
+                selectedWatchlistIds.clear();
+            }
+            updateSelectedCountUI();
+            renderWatchlist();
+        }
+
+        function updateSelectedCountUI() {
+            const countText = document.getElementById('selectedCountText');
+            const untrackBtn = document.getElementById('untrackSelectedBtn');
+            const selectAllBox = document.getElementById('selectAllCheckbox');
+
+            if (countText) countText.textContent = selectedWatchlistIds.size;
+            if (untrackBtn) {
+                untrackBtn.disabled = selectedWatchlistIds.size === 0;
+            }
+            if (selectAllBox) {
+                selectAllBox.checked = watchlist.length > 0 && selectedWatchlistIds.size === watchlist.length;
+            }
+        }
+
+        function untrackSelectedItems() {
+            if (selectedWatchlistIds.size === 0) return;
+
+            const count = selectedWatchlistIds.size;
+            watchlist = watchlist.filter(item => !selectedWatchlistIds.has(item.id));
+            selectedWatchlistIds.clear();
+
+            saveWatchlistToStorage();
+            showToast(`已成功取消追蹤 ${count} 項物品`, 'success');
+            renderWatchlist();
+        }
+
+        function confirmClearAllWatchlist() {
+            if (watchlist.length === 0) return;
+
+            if (confirm('確定要清除所有追蹤提醒項目嗎？此動作無法復原。')) {
+                watchlist = [];
+                selectedWatchlistIds.clear();
+                saveWatchlistToStorage();
+                showToast('已清空追蹤清單', 'info');
+                renderWatchlist();
+            }
+        }
+
+        function filterWatchlistTab(type) {
+            currentWatchlistFilter = type;
+            document.querySelectorAll('.wl-filter-btn').forEach(btn => {
+                btn.classList.remove('bg-purple-600', 'text-white');
+                btn.classList.add('bg-slate-800', 'text-slate-400');
+            });
+            const activeBtn = document.getElementById(`wlFilter-${type}`);
+            if (activeBtn) {
+                activeBtn.classList.remove('bg-slate-800', 'text-slate-400');
+                activeBtn.classList.add('bg-purple-600', 'text-white');
+            }
+            renderWatchlist();
+        }
+
+        async function openItemDetailModal(id) {
+            activeModalItemId = id;
+
+            // Find item in local stores
+            let item = todayShopItems.find(i => i.id === id) || allCosmeticsList.find(i => i.id === id) || watchlist.find(i => i.id === id);
+
+            if (!item) {
+                showToast('正在向 API 查詢物品細節...', 'info');
+                try {
+                    const res = await fetch(`https://fortnite-api.com/v2/cosmetics/br/${id}`);
+                    const data = await res.json();
+                    if (data.data) item = data.data;
+                } catch(e) {}
+            }
+
+            if (!item) {
+                showToast('無法讀取物品資訊', 'error');
+                return;
+            }
+
+            // Populate Modal UI
+            document.getElementById('modalTitle').textContent = item.name;
+            document.getElementById('modalDescription').textContent = item.description || '無詳細描述';
+            document.getElementById('modalImage').src = item.images?.featured || item.images?.icon || item.images?.smallIcon || 'https://placehold.co/400x400/1e293b/ffffff?text=Fortnite';
+
+            document.getElementById('modalRarityBadge').textContent = item.rarity?.displayValue || item.rarity?.value || 'Common';
+            document.getElementById('modalTypeBadge').textContent = item.type?.displayValue || item.type?.value || 'Cosmetic';
+
+            const priceTag = document.getElementById('modalPriceTag');
+            if (item.price) {
+                priceTag.classList.remove('hidden');
+                document.getElementById('modalPriceText').textContent = item.price.toLocaleString();
+            } else {
+                priceTag.classList.add('hidden');
+            }
+
+            document.getElementById('modalIntroduction').textContent = item.introduction?.text || (item.introduction ? `Chapter ${item.introduction.chapter}, Season ${item.introduction.season}` : '未記載');
+
+            // Last appeared
+            const lastAppearedEl = document.getElementById('modalLastAppeared');
+            if (shopItemIdsSet.has(item.id)) {
+                lastAppearedEl.textContent = '🟢 今日販售中！';
+                lastAppearedEl.className = 'font-bold text-amber-400 mt-0.5 block';
+            } else if (item.shopHistory && item.shopHistory.length > 0) {
+                const lastDate = new Date(item.shopHistory[item.shopHistory.length - 1]);
+                const diffDays = Math.floor((new Date() - lastDate) / (1000 * 60 * 60 * 24));
+                lastAppearedEl.textContent = `${diffDays} 天前 (${lastDate.toISOString().split('T')[0]})`;
+                lastAppearedEl.className = 'font-semibold text-slate-200 mt-0.5 block';
+            } else {
+                lastAppearedEl.textContent = '無商店上架紀錄';
+                lastAppearedEl.className = 'font-semibold text-slate-400 mt-0.5 block';
+            }
+
+            updateModalTrackBtn();
+
+            document.getElementById('itemDetailModal').classList.remove('hidden');
+            document.getElementById('itemDetailModal').classList.add('flex');
+        }
+
+        function closeModal() {
+            document.getElementById('itemDetailModal').classList.add('hidden');
+            document.getElementById('itemDetailModal').classList.remove('flex');
+            activeModalItemId = null;
+        }
+
+        function updateModalTrackBtn() {
+            if (!activeModalItemId) return;
+            const btn = document.getElementById('modalTrackBtn');
+            const tracked = isItemTracked(activeModalItemId);
+
+            if (tracked) {
+                btn.className = 'w-full py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all bg-rose-950/80 hover:bg-rose-900 border border-rose-800 text-rose-300';
+                btn.innerHTML = `<i class="fa-solid fa-bell-slash"></i><span>取消追蹤此物品</span>`;
+            } else {
+                btn.className = 'w-full py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all bg-purple-600 hover:bg-purple-500 text-white shadow-purple-600/30';
+                btn.innerHTML = `<i class="fa-solid fa-bell"></i><span>加入追蹤提醒</span>`;
+            }
+        }
+
+        function toggleModalTrackStatus() {
+            if (!activeModalItemId) return;
+            let itemObj = todayShopItems.find(i => i.id === activeModalItemId) || allCosmeticsList.find(i => i.id === activeModalItemId) || watchlist.find(i => i.id === activeModalItemId);
+            if (itemObj) {
+                toggleTrackItem(itemObj);
+                updateModalTrackBtn();
+            }
+        }
+
+        function startResetCountdown() {
+            function updateTimer() {
+                const now = new Date();
+                const nowUTC = new Date(now.toUTCString());
+                const nextResetUTC = new Date(Date.UTC(nowUTC.getUTCFullYear(), nowUTC.getUTCMonth(), nowUTC.getUTCDate() + 1, 0, 0, 0));
+
+                const diffMs = nextResetUTC - nowUTC;
+                if (diffMs <= 0) {
+                    fetchTodayShop(true);
+                    showToast('商店已刷新！正在取得最新資料...', 'info');
+                } else {
+                    const hours = Math.floor(diffMs / (1000 * 60 * 60)).toString().padStart(2, '0');
+                    const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60)).toString().padStart(2, '0');
+                    const seconds = Math.floor((diffMs % (1000 * 60)) / 1000).toString().padStart(2, '0');
+                    document.getElementById('resetTimer').textContent = `${hours}:${minutes}:${seconds}`;
+                }
+            }
+            updateTimer();
+            setInterval(updateTimer, 1000);
+        }
+
+        function checkNotificationPermissionStatus() {
+            const bar = document.getElementById('notificationPermissionBar');
+            if ('Notification' in window && Notification.permission === 'default') {
+                bar.classList.remove('hidden');
+            } else {
+                bar.classList.add('hidden');
+            }
+        }
+
+        async function requestNotificationPermission() {
+            if ('Notification' in window) {
+                const perm = await Notification.requestPermission();
+                if (perm === 'granted') {
+                    showToast('已成功開啟桌面通知功能！', 'success');
+                    checkTrackedItemsInShop();
+                }
+                checkNotificationPermissionStatus();
+            }
+        }
+
+        function checkTrackedItemsInShop() {
+            const matchedItems = watchlist.filter(item => shopItemIdsSet.has(item.id));
+            const banner = document.getElementById('shopAlertBanner');
+            const alertText = document.getElementById('shopAlertText');
+
+            if (matchedItems.length > 0) {
+                banner.classList.remove('hidden');
+                alertText.textContent = `你追蹤的包含：${matchedItems.map(i => i.name).slice(0, 3).join('、')}${matchedItems.length > 3 ? ' 等多項物品' : ''} 已上架今日商店！`;
+
+                // Desktop Notification
+                if ('Notification' in window && Notification.permission === 'granted') {
+                    new Notification('Fortnite 今日商店上架提醒！', {
+                        body: `你追蹤的 ${matchedItems.length} 項物品（如: ${matchedItems[0].name}）今天上架了，快進入遊戲選購！`,
+                        icon: matchedItems[0].image || ''
+                    });
+                }
+            } else {
+                banner.classList.add('hidden');
+            }
+        }
+
+        function switchTab(tabKey) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('bg-purple-600', 'text-white', 'shadow-lg', 'shadow-purple-600/30');
+                btn.classList.add('text-slate-400');
+            });
+
+            const targetContent = document.getElementById(`tabContent-${tabKey}`);
+            const targetBtn = document.getElementById(`tabBtn-${tabKey}`);
+
+            if (targetContent) targetContent.classList.remove('hidden');
+            if (targetBtn) {
+                targetBtn.classList.remove('text-slate-400');
+                targetBtn.classList.add('bg-purple-600', 'text-white', 'shadow-lg', 'shadow-purple-600/30');
+            }
+
+            if (tabKey === 'watchlist') {
+                renderWatchlist();
+            } else if (tabKey === 'search' && searchResults.length === 0) {
+                executeSearch();
+            }
+        }
+
+        function refreshCurrentUI() {
+            if (!document.getElementById('tabContent-shop').classList.contains('hidden')) {
+                filterShopItems();
+            } else if (!document.getElementById('tabContent-search').classList.contains('hidden')) {
+                renderSearchResults(true);
+            } else if (!document.getElementById('tabContent-watchlist').classList.contains('hidden')) {
+                renderWatchlist();
+            }
+            checkTrackedItemsInShop();
+        }
+
+        function getRarityBorderClass(rarityKey) {
+            const key = (rarityKey || '').toLowerCase();
+            if (key.includes('legendary')) return 'rarity-border-legendary';
+            if (key.includes('epic')) return 'rarity-border-epic';
+            if (key.includes('rare')) return 'rarity-border-rare';
+            if (key.includes('uncommon')) return 'rarity-border-uncommon';
+            if (key.includes('icon')) return 'rarity-border-icon';
+            if (key.includes('marvel')) return 'rarity-border-marvel';
+            if (key.includes('dc')) return 'rarity-border-dc';
+            if (key.includes('starwars')) return 'rarity-border-starwars';
+            return 'rarity-border-common';
+        }
+
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+
+            let iconClass = 'fa-circle-info text-blue-400';
+            let borderColor = 'border-blue-500/30';
+
+            if (type === 'success') {
+                iconClass = 'fa-circle-check text-emerald-400';
+                borderColor = 'border-emerald-500/30';
+            } else if (type === 'error') {
+                iconClass = 'fa-circle-xmark text-rose-400';
+                borderColor = 'border-rose-500/30';
+            }
+
+            toast.className = `pointer-events-auto flex items-center gap-2.5 px-4 py-3 rounded-2xl bg-slate-900/95 border ${borderColor} text-slate-200 text-xs shadow-2xl backdrop-blur-md transform transition-all duration-300 translate-y-2 opacity-0`;
+            toast.innerHTML = `
+                <i class="fa-solid ${iconClass} text-sm"></i>
+                <span class="font-medium">${message}</span>
+            `;
+
+            container.appendChild(toast);
+
+            setTimeout(() => {
+                toast.classList.remove('translate-y-2', 'opacity-0');
+            }, 10);
+
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'translate-y-2');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+    </script>
+</body>
+</html>
